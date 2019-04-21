@@ -1,5 +1,6 @@
 
 add_library(reactive STATIC
+    object.cpp
     signal.cpp
     reaction.cpp
 )

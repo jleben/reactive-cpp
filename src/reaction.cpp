@@ -88,9 +88,9 @@ void Reaction::lock_objects()
     for (auto & object : d_objects)
     {
         if (object.modified)
-            object.p->d_mutex.lock();
+            object.p->lock_modify();
         else
-            object.p->d_mutex.lock_shared();
+            object.p->lock_use();
     }
 }
 
@@ -98,7 +98,7 @@ void Reaction::unlock_objects()
 {
     for (auto & object : d_objects)
     {
-        object.p->d_mutex.unlock();
+        object.p->unlock();
     }
 }
 
