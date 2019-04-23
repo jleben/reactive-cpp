@@ -32,12 +32,12 @@ void Signal::notify()
     while (result == -1 && errno == EINTR);
 }
 
-void Signal::clear()
+void Signal::clear(int fd)
 {
     uint64_t count;
     int result;
 
-    do { result = read(d_fd, &count, sizeof(count)); }
+    do { result = read(fd, &count, sizeof(count)); }
     while (result == -1 && errno == EINTR);
 }
 
@@ -47,7 +47,7 @@ Event Signal::event()
     e.fd = d_fd;
     e.epoll_events = EPOLLIN;
     e.poll_events = POLLIN;
-    e.clear = std::bind(&Signal::clear, this);
+    e.clear = std::bind(&Signal::clear, e.fd);
     return e;
 }
 

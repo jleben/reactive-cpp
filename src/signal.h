@@ -32,8 +32,14 @@ public:
     /*! \brief Returns a momentary event activated when \ref notify is called. */
     Event event();
 
+    Signal(const Signal & other) = delete;
+    Signal & operator=(const Signal & other) = delete;
+
+    Signal(Signal && other): d_fd(other.d_fd) {}
+    Signal & operator=(Signal && other) { d_fd = other.d_fd; return *this; }
+
 private:
-    void clear();
+    static void clear(int fd);
 
     int d_fd;
 };
