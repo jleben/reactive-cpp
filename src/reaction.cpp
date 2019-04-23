@@ -8,37 +8,50 @@ namespace Reactive {
 Reaction::Reaction(const Event & event,
                    const vector<Object*> & used_objects,
                    const vector<Object*> & modified_objects,
-                   Function function):
-    d_event(event),
-    d_func(function)
+                   Function function)
 {
+    d = new Implementation;
+    d->event = event;
+    d->func = function;
+
     for(auto * object : used_objects)
     {
         bool modified = false;
-        d_objects.push_back({ object, modified });
+        d->objects.push_back({ object, modified });
     }
 
     for(auto * object : modified_objects)
     {
         bool modified = true;
-        d_objects.push_back({ object, modified });
+        d->objects.push_back({ object, modified });
     }
 
-    std::sort(d_objects.begin(), d_objects.end(),
+    std::sort(d->objects.begin(), d->objects.end(),
               [](const Used_Object & a, const Used_Object & b){ return a.p < b.p; });
 
-    d_thread = thread(&Reaction::work, this);
+    d->thread = std::thread(&Reaction::Implementation::work, d);
 }
 
-void Reaction::work()
+Reaction::~Reaction()
+{
+    if (d && d->thread.joinable())
+    {
+        d->stop_signal.notify();
+        d->thread.join();
+    }
+
+    delete d;
+}
+
+void Reaction::Implementation::work()
 {
     pollfd data[2];
 
-    data[0].fd = d_event.fd;
-    data[0].events = d_event.poll_events;
+    data[0].fd = event.fd;
+    data[0].events = event.poll_events;
 
     {
-        auto sig_event = d_signal.event();
+        auto sig_event = stop_signal.event();
         data[1].fd = sig_event.fd;
         data[1].events = sig_event.poll_events;
     }
@@ -58,7 +71,7 @@ void Reaction::work()
         if (data[0].revents)
         {
             do_function();
-            d_event.clear();
+            event.clear();
         }
     }
 
@@ -66,13 +79,13 @@ void Reaction::work()
         throw std::runtime_error("'poll' failed.");
 }
 
-void Reaction::do_function()
+void Reaction::Implementation::do_function()
 {
     lock_objects();
 
     try
     {
-        d_func();
+        func();
     }
     catch(...)
     {
@@ -83,9 +96,9 @@ void Reaction::do_function()
     unlock_objects();
 }
 
-void Reaction::lock_objects()
+void Reaction::Implementation::lock_objects()
 {
-    for (auto & object : d_objects)
+    for (auto & object : objects)
     {
         if (object.modified)
             object.p->lock_modify();
@@ -94,9 +107,9 @@ void Reaction::lock_objects()
     }
 }
 
-void Reaction::unlock_objects()
+void Reaction::Implementation::unlock_objects()
 {
-    for (auto & object : d_objects)
+    for (auto & object : objects)
     {
         object.p->unlock();
     }

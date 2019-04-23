@@ -27,16 +27,14 @@ public:
              Function function);
     ~Reaction();
 
-private:
-    void work();
-    void do_function();
-    void lock_objects();
-    void unlock_objects();
+    Reaction() {}
+    Reaction(const Reaction & other) = delete;
+    Reaction & operator=(const Reaction & other) = delete;
 
-    Event d_event;
-    std::function<void()> d_func;
-    thread d_thread;
-    Signal d_signal;
+    Reaction(Reaction && other) = default;
+    Reaction & operator= (Reaction && other) = default;
+
+private:
 
     struct Used_Object
     {
@@ -44,14 +42,22 @@ private:
         bool modified = false;
     };
 
-    vector<Used_Object> d_objects;
-};
+    struct Implementation
+    {
+        void work();
+        void do_function();
+        void lock_objects();
+        void unlock_objects();
 
-inline
-Reaction::~Reaction()
-{
-    d_signal.notify();
-    d_thread.join();
-}
+        Event event;
+        std::function<void()> func;
+        std::thread thread;
+        Signal stop_signal;
+
+        vector<Used_Object> objects;
+    };
+
+    Implementation * d = nullptr;
+};
 
 }
