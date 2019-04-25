@@ -5,34 +5,20 @@
 
 namespace Reactive {
 
-Reaction::Reaction(const Event & event,
-                   const vector<Object*> & used_objects,
-                   const vector<Object*> & modified_objects,
-                   Function function)
+Reactor::Reactor(const Event & event, const Reaction & reaction)
 {
     d = new Implementation;
     d->event = event;
-    d->func = function;
 
-    for(auto * object : used_objects)
+    for (auto & fragment : reaction.sequence)
     {
-        bool modified = false;
-        d->objects.push_back({ object, modified });
+        d->fragments.emplace_back(fragment);
     }
 
-    for(auto * object : modified_objects)
-    {
-        bool modified = true;
-        d->objects.push_back({ object, modified });
-    }
-
-    std::sort(d->objects.begin(), d->objects.end(),
-              [](const Used_Object & a, const Used_Object & b){ return a.p < b.p; });
-
-    d->thread = std::thread(&Reaction::Implementation::work, d);
+    d->thread = std::thread(&Reactor::Implementation::work, d);
 }
 
-Reaction::~Reaction()
+Reactor::~Reactor()
 {
     if (d && d->thread.joinable())
     {
@@ -43,7 +29,7 @@ Reaction::~Reaction()
     delete d;
 }
 
-void Reaction::Implementation::work()
+void Reactor::Implementation::work()
 {
     pollfd data[2];
 
@@ -70,7 +56,7 @@ void Reaction::Implementation::work()
 
         if (data[0].revents)
         {
-            do_function();
+            react();
             event.clear();
         }
     }
@@ -79,7 +65,34 @@ void Reaction::Implementation::work()
         throw std::runtime_error("'poll' failed.");
 }
 
-void Reaction::Implementation::do_function()
+void Reactor::Implementation::react()
+{
+    for (auto & fragment : fragments)
+    {
+        fragment();
+    }
+}
+
+Reactor::Fragment::Fragment(const Reaction_Fragment & reaction):
+    func(reaction.function)
+{
+    for(auto * object : reaction.used_objects)
+    {
+        bool modified = false;
+        objects.push_back({ object, modified });
+    }
+
+    for(auto * object : reaction.modified_objects)
+    {
+        bool modified = true;
+        objects.push_back({ object, modified });
+    }
+
+    std::sort(objects.begin(), objects.end(),
+              [](const Used_Object & a, const Used_Object & b){ return a.p < b.p; });
+}
+
+void Reactor::Fragment::operator()()
 {
     lock_objects();
 
@@ -96,7 +109,7 @@ void Reaction::Implementation::do_function()
     unlock_objects();
 }
 
-void Reaction::Implementation::lock_objects()
+void Reactor::Fragment::lock_objects()
 {
     for (auto & object : objects)
     {
@@ -107,7 +120,7 @@ void Reaction::Implementation::lock_objects()
     }
 }
 
-void Reaction::Implementation::unlock_objects()
+void Reactor::Fragment::unlock_objects()
 {
     for (auto & object : objects)
     {

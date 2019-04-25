@@ -13,17 +13,25 @@ int main()
 
     Safe<int> o1;
 
-    Reaction r1(s1.event(), {&o1}, {}, []()
-    {
-        printf("*\n");
-    });
+    printf("Hi.\n");
 
-    Reaction r2(s2.event(), {&o1}, {}, [&o1]()
+    Reactor r1(s1.event(), Do([](){
+        printf("*\n");
+    }));
+
+    Reactor r2(s2.event(),
+    Do([&o1]()
     {
         printf(">--- %p\n", &o1.use());
-        this_thread::sleep_for(chrono::milliseconds(500));
+        this_thread::sleep_for(chrono::milliseconds(100));
         printf("<---\n");
-    });
+    })
+    .Modifying(&o1)
+    &&
+    Do([]{
+        this_thread::sleep_for(chrono::milliseconds(300));
+        printf("Yas!\n");
+    }).Modifying(&o1));
 
     int count = 10;
     while(count--)

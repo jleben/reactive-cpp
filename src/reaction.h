@@ -7,6 +7,7 @@
 #include <thread>
 #include <functional>
 #include <vector>
+#include <memory>
 
 namespace Reactive {
 
@@ -16,23 +17,70 @@ using std::vector;
 class Event;
 class Object;
 
-class Reaction
+using Function = std::function<void()>;
+
+struct Reaction_Fragment
+{
+    Function function;
+    vector<Object*> used_objects;
+    vector<Object*> modified_objects;
+
+    Reaction_Fragment & Using(Object* object)
+    {
+        used_objects.push_back(object);
+        return *this;
+    }
+    Reaction_Fragment Modifying(Object* object)
+    {
+        modified_objects.push_back(object);
+        return *this;
+    }
+};
+
+struct Reaction
+{
+    Reaction() {}
+    Reaction(const Reaction_Fragment & f): sequence({f}) {}
+    vector<Reaction_Fragment> sequence;
+};
+
+inline
+Reaction_Fragment Do(Function f)
+{
+    return Reaction_Fragment { f };
+}
+
+inline
+Reaction operator&&(const Reaction_Fragment & a, const Reaction_Fragment & b)
+{
+    Reaction r;
+    r.sequence = { a, b };
+    return r;
+}
+
+inline
+Reaction operator&&(const Reaction & r, const Reaction_Fragment & f)
+{
+    Reaction r2 = r;
+    r2.sequence.push_back(f);
+    return r2;
+}
+
+class Reactor
 {
 public:
     using Function = std::function<void()>;
 
-    Reaction(const Event &,
-             const vector<Object*> & used_objects,
-             const vector<Object*> & modified_objects,
-             Function function);
-    ~Reaction();
+    Reactor(const Event &,
+            const Reaction &);
+    ~Reactor();
 
-    Reaction() {}
-    Reaction(const Reaction & other) = delete;
-    Reaction & operator=(const Reaction & other) = delete;
+    Reactor() {}
+    Reactor(const Reactor & other) = delete;
+    Reactor & operator=(const Reactor & other) = delete;
 
-    Reaction(Reaction && other) = default;
-    Reaction & operator= (Reaction && other) = default;
+    Reactor(Reactor && other) = default;
+    Reactor & operator= (Reactor && other) = default;
 
 private:
 
@@ -42,19 +90,31 @@ private:
         bool modified = false;
     };
 
-    struct Implementation
+    class Fragment
     {
-        void work();
-        void do_function();
+    public:
+        Fragment() {}
+        Fragment(const Reaction_Fragment &);
+        void operator()();
+
+    private:
         void lock_objects();
         void unlock_objects();
 
-        Event event;
         std::function<void()> func;
+        vector<Used_Object> objects;
+    };
+
+    struct Implementation
+    {
+        void work();
+        void react();
+
+        Event event;
         std::thread thread;
         Signal stop_signal;
 
-        vector<Used_Object> objects;
+        vector<Fragment> fragments;
     };
 
     Implementation * d = nullptr;

@@ -5,7 +5,7 @@
 
 namespace Reactive {
 
-class Reaction;
+class Reactor;
 
 class Object
 {
@@ -14,7 +14,7 @@ public:
     bool can_modify() const;
 
 private:
-    friend class Reaction;
+    friend class Reactor;
     std::shared_mutex d_mutex;
 
     void lock_use()
