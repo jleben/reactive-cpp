@@ -15,11 +15,13 @@ int main()
 
     printf("Hi.\n");
 
-    auto r1 = s1.event() >> []{
+    auto r1 = s1.event() >>
+    []{
         printf("*\n");
     };
 
-    Reactor r2(s2.event(),
+    auto r2 = s2.event() >>
+
     Do([&o1]()
     {
         printf(">--- %p\n", &o1.use());
@@ -27,11 +29,12 @@ int main()
         printf("<---\n");
     })
     .Modifying(&o1)
-    &&
-    Do([]{
+
+    + Do([]{
         this_thread::sleep_for(chrono::milliseconds(300));
         printf("Yas!\n");
-    }).Modifying(&o1));
+    })
+    .Modifying(&o1);
 
     int count = 10;
     while(count--)

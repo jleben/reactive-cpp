@@ -53,7 +53,7 @@ Reaction_Fragment Do(Function f)
 }
 
 inline
-Reaction operator&&(const Reaction_Fragment & a, const Reaction_Fragment & b)
+Reaction operator+(const Reaction_Fragment & a, const Reaction_Fragment & b)
 {
     Reaction r;
     r.sequence = { a, b };
@@ -61,7 +61,7 @@ Reaction operator&&(const Reaction_Fragment & a, const Reaction_Fragment & b)
 }
 
 inline
-Reaction operator&&(const Reaction & r, const Reaction_Fragment & f)
+Reaction operator+(const Reaction & r, const Reaction_Fragment & f)
 {
     Reaction r2 = r;
     r2.sequence.push_back(f);
