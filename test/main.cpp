@@ -15,9 +15,9 @@ int main()
 
     printf("Hi.\n");
 
-    Reactor r1(s1.event(), Do([](){
+    auto r1 = s1.event() >> []{
         printf("*\n");
-    }));
+    };
 
     Reactor r2(s2.event(),
     Do([&o1]()

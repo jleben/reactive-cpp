@@ -21,6 +21,8 @@ using Function = std::function<void()>;
 
 struct Reaction_Fragment
 {
+    Reaction_Fragment(Function f): function(f) {}
+
     Function function;
     vector<Object*> used_objects;
     vector<Object*> modified_objects;
@@ -30,7 +32,7 @@ struct Reaction_Fragment
         used_objects.push_back(object);
         return *this;
     }
-    Reaction_Fragment Modifying(Object* object)
+    Reaction_Fragment & Modifying(Object* object)
     {
         modified_objects.push_back(object);
         return *this;
@@ -119,5 +121,17 @@ private:
 
     Implementation * d = nullptr;
 };
+
+inline
+Reactor operator >> (const Event & e, const Reaction & r)
+{
+    return Reactor(e, r);
+}
+
+inline
+Reactor operator >> (const Event & e, Function f)
+{
+    return Reactor(e, Reaction(f));
+}
 
 }
